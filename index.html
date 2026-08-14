@@ -1998,10 +1998,40 @@ const v40CompactVolumePacingCalendar=`<style id="v40-compact-volume-pacing-calen
 
 /* RELIABILITY RULE: Never place a literal closing script tag inside the generated-report template. Use <\/script> or direct markup instead; a raw closer terminates this builder script in the browser. */
 function v127ReportingHeaderAlignmentCSS(){return `<style id="v127-reporting-header-alignment">
-/* v127 — compact Reporting History control and match its right gutter to the Reporting Period box. */
-:root{--avani-report-right-gutter:max(20px,calc((100vw - 1760px)/2 + 24px))}
-.ref-brandbar{padding-right:var(--avani-report-right-gutter)!important}
-.ref-hero-inner{padding-right:var(--avani-report-right-gutter)!important}
+/* v127 — align the full reporting header to the Autodesk workspace gutter and use the Autodesk-style Avani co-brand treatment. */
+:root{--avani-report-side-gutter:max(24px,calc((100vw - 1760px)/2 + 24px))}
+.ref-brandbar{
+  padding-left:var(--avani-report-side-gutter)!important;
+  padding-right:var(--avani-report-side-gutter)!important
+}
+.ref-hero-inner{padding-right:var(--avani-report-side-gutter)!important}
+.ref-cobrand{gap:24px!important}
+.ref-avani-brand{gap:19px!important}
+.ref-avani-logo{
+  width:94px!important;
+  height:94px!important;
+  filter:drop-shadow(0 10px 22px rgba(63,120,235,.18))!important
+}
+.ref-avani-copy strong{
+  font-size:36px!important;
+  line-height:.96!important;
+  letter-spacing:.012em!important;
+  font-weight:900!important
+}
+.ref-avani-copy small{
+  margin-top:8px!important;
+  font-size:19px!important;
+  line-height:1.06!important;
+  color:#d3def1!important;
+  font-weight:650!important;
+  letter-spacing:.01em!important
+}
+.ref-divider{
+  height:60px!important;
+  width:1px!important;
+  background:rgba(255,255,255,.32)!important;
+  flex:0 0 1px!important
+}
 .ref-brandbar>.report-history-trigger{
   min-height:34px!important;
   padding:6px 10px!important;
@@ -2023,14 +2053,31 @@ function v127ReportingHeaderAlignmentCSS(){return `<style id="v127-reporting-hea
   width:5px!important;
   height:1.55px!important
 }
+/* Exact Autodesk-style AVANI lockup proportions from the supplied reference. */
+@media(min-width:1051px){
+  .ref-avani-brand{align-items:center!important}
+  .ref-avani-logo{width:94px!important;height:94px!important;border-radius:22px!important;object-fit:cover!important}
+  .ref-avani-copy{min-width:305px!important}
+  .ref-avani-copy strong{font-size:36px!important;line-height:.96!important;letter-spacing:-.02em!important;font-weight:900!important;white-space:nowrap!important}
+  .ref-avani-copy small{margin-top:8px!important;font-size:19px!important;line-height:1!important;font-weight:650!important;letter-spacing:0!important;white-space:nowrap!important;color:#d3def1!important}
+  .ref-divider{height:60px!important;margin-left:2px!important}
+}
 @media(max-width:1050px){
-  :root{--avani-report-right-gutter:14px}
+  :root{--avani-report-side-gutter:16px}
   .ref-brandbar>.report-history-trigger{min-height:32px!important;padding:6px 9px!important;font-size:8px!important;gap:6px!important}
+  .ref-avani-logo{width:72px!important;height:72px!important}
+  .ref-avani-copy strong{font-size:21px!important}
+  .ref-avani-copy small{font-size:11px!important}
+  .ref-divider{height:34px!important}
 }
 @media(max-width:760px){
-  :root{--avani-report-right-gutter:12px}
+  :root{--avani-report-side-gutter:14px}
   .ref-hero-inner{padding-right:14px!important}
   .ref-brandbar>.report-history-trigger{min-height:32px!important;padding:6px 9px!important}
+  .ref-avani-logo{width:58px!important;height:58px!important}
+  .ref-avani-copy strong{font-size:18px!important}
+  .ref-avani-copy small{font-size:10px!important;margin-top:4px!important}
+  .ref-divider{display:none!important}
 }
 @media print{.ref-hero-inner{padding-right:18px!important}}
 </style>`}
@@ -4881,8 +4928,81 @@ function v140NamedVisualPriorityPatch(){return `<style id="v140-named-visual-pri
   if(!html.includes('v150-named-cs-commercial-parity')) html=html.replace('</body>',v150NamedCsCommercialParityPatch()+'</body>');
   if(!html.includes('v151-commercial-bg-named-pie-reset')) html=html.replace('</body>',v151CommercialBackgroundNamedPieResetPatch()+'</body>');
   if(!html.includes('v152-core-commercial-background-parity')) html=html.replace('</body>',v152CoreCommercialBackgroundParityPatch()+'</body>');
+  if(!html.includes('v164-autodesk-workspace-margins')) html=html.replace('</body>',v164AutodeskWorkspaceMarginsCSS()+'</body>');
+  if(!html.includes('v165-report-output-avani-lockup')) html=html.replace('</body>',v165ReportOutputAvaniLockupCSS()+'</body>');
   return html
 }
+function v165ReportOutputAvaniLockupCSS(){return `<style id="v165-report-output-avani-lockup">
+/* Final report-output-only AVANI lockup at the actual Autodesk report-header scale. */
+@media(min-width:1051px){
+  .ref-brandbar{padding-left:max(24px,calc((100vw - 1760px)/2 + 24px))!important}
+  .ref-cobrand{gap:16px!important}
+  .ref-avani-brand{display:flex!important;align-items:center!important;gap:11px!important;min-width:max-content!important}
+  .ref-avani-logo{
+    display:block!important;
+    width:56px!important;
+    height:56px!important;
+    flex:0 0 56px!important;
+    object-fit:cover!important;
+    object-position:center!important;
+    border-radius:13px!important;
+    filter:drop-shadow(0 5px 11px rgba(32,105,228,.16))!important
+  }
+  .ref-avani-copy{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    min-width:0!important;
+    line-height:1!important
+  }
+  .ref-avani-copy strong{
+    margin:0!important;
+    color:#fff!important;
+    font-size:21px!important;
+    line-height:.96!important;
+    font-weight:900!important;
+    letter-spacing:-.018em!important;
+    white-space:nowrap!important
+  }
+  .ref-avani-copy small{
+    display:block!important;
+    margin-top:5px!important;
+    color:#cdd9eb!important;
+    font-size:11px!important;
+    line-height:1!important;
+    font-weight:650!important;
+    letter-spacing:0!important;
+    text-transform:none!important;
+    white-space:nowrap!important
+  }
+  .ref-divider{height:36px!important;margin-left:3px!important;background:rgba(255,255,255,.30)!important}
+}
+</style>`}
+function v164AutodeskWorkspaceMarginsCSS(){return `<style id="v164-autodesk-workspace-margins">
+/* Match the Scale reporting workspace gutter to the approved Autodesk layout.
+   Autodesk: max-width 1760px; centered; 225px sidebar; 22px gap; 22px/24px/58px layout padding. */
+@media(min-width:951px){
+  .app-shell-v18{
+    width:100%!important;
+    max-width:1760px!important;
+    margin:0 auto!important;
+    padding:22px 24px 58px!important;
+    grid-template-columns:225px minmax(0,1fr)!important;
+    gap:22px!important;
+    align-items:start!important;
+    box-sizing:border-box!important;
+  }
+  .app-shell-v18>.app-main-v18>.content{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+}
+@media(min-width:951px) and (max-width:1250px){
+  .app-shell-v18{grid-template-columns:205px minmax(0,1fr)!important}
+}
+</style>`}
 const PREVIEW_DESKTOP_WIDTH=1440;
 function syncPreviewScale(){
   const canvas=$('previewCanvas'),frame=$('preview'),note=$('previewScaleNote');
