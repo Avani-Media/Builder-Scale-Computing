@@ -2547,7 +2547,7 @@ function buildReport(){
   const pdfImport=paid.pdfImport||{},pdfNarrative=(pdfImport.narrative&&typeof pdfImport.narrative==='object')?pdfImport.narrative:(paid.sourceNarrative||{}),pdfSourceActive=!!(paid.refreshMeta&&paid.refreshMeta.sourceStatus==='pdf-import');
   const sourceText=function(v){return clean(String(v||'').replace(/\s+/g,' '))},sourceList=function(v){return Array.isArray(v)?v.map(sourceText).filter(Boolean):[]};
   const coreWindow=(paid.core.benchmarkWindow||paid.core.july||{}),coreWeek=(paid.core.latestWeek||paid.core.week31||{}),namedWindow=(paid.named.benchmarkWindow||paid.named.july||{}),namedWeek=(paid.named.latestWeek||paid.named.week31||{});
-  const paidPeriodLabel=v=>{const s=clean(v);if(/^Week\s*31$/i.test(s))return 'July 27 – August 2';if(/^Week\s*32$/i.test(s))return 'August 3 – August 9';if(/^Week\s*33$/i.test(s))return 'August 10 – August 16';return s};
+  const paidPeriodLabel=v=>{const s=clean(v);if(/^Week\s*(?:31|32|33)$/i.test(s))return 'August 1st, 2026 – August 12th, 2026';return s};
   const coreWindowLabel=clean(coreWindow.label)||(pdfSourceActive?'Latest benchmark window':'Benchmark window'),coreWeekLabel=paidPeriodLabel(coreWeek.label)||(pdfSourceActive?'Latest reported week':'Latest week'),namedWindowLabel=clean(namedWindow.label)||(pdfSourceActive?'Latest benchmark window':'Benchmark window'),namedWeekLabel=paidPeriodLabel(namedWeek.label)||(pdfSourceActive?'Latest reported week':'Latest week');
   const corePacingLabel=clean(paid.core.budget&&paid.core.budget.label)||monthShortFromPeriod(paidDataPeriod)||'Current month',namedPacingLabel=clean(paid.named.budget&&paid.named.budget.label)||monthShortFromPeriod(paidDataPeriod)||'Current month';
   const execSourceReadout=sourceText(pdfNarrative.execSummary),coreSourceObservation=sourceText(pdfNarrative.coreObservation),namedSourceObservation=sourceText(pdfNarrative.namedObservation),youtubeSourceReadout=sourceText(pdfNarrative.youtube),sysadminSourceObservation=sourceText(pdfNarrative.sysadminObservation),sysadminSourceNext=sourceText(pdfNarrative.sysadminNextStep),coreSourceNext=sourceList(pdfNarrative.coreNextSteps),namedSourceNext=sourceList(pdfNarrative.namedNextSteps),namedTopVertical=sourceText(pdfNarrative.topVertical);
@@ -5106,9 +5106,7 @@ function releasePreviewObjectUrl(){
 }
 function normalizeClientWeekLabels(html){
   return String(html||'')
-    .replace(/Week\s*31/gi,'July 27 – August 2')
-    .replace(/Week\s*32/gi,'August 3 – August 9')
-    .replace(/Week\s*33/gi,'August 10 – August 16');
+    .replace(/Week\s*(?:31|32|33)/gi,'August 1st, 2026 – August 12th, 2026');
 }
 function validateGeneratedReport(html){
   html=normalizeClientWeekLabels(html);
