@@ -6057,14 +6057,16 @@ function renderPreview(html,sequence){
   },2200);
 }
 function build(){
-  ensureStackAdaptCreativeCollection();
   const btn=$('previewBtn');
   const seq=++buildSequence;
+  let prepWarning='';
   try{
     if(btn){btn.disabled=true;btn.classList.add('is-building');btn.textContent='Building preview '+seq+'…';}
     $('previewState').textContent='Building preview '+seq+'…';
     $('buildStatus').className='notice';
     $('buildStatus').innerHTML='<b>Building preview '+seq+'…</b> Recalculating the evergreen client report.';
+    try{ensureStackAdaptCreativeCollection()}catch(prepErr){prepWarning=prepErr&&prepErr.message?prepErr.message:String(prepErr);console.warn('Preview asset-library preparation skipped:',prepErr)}
+    window.__scalePreviewPrepWarning=prepWarning;
     renderDataQa();
     lastHTML=validateGeneratedReport(buildReport());
     window.__scaleLastHtmlLength=lastHTML.length;
