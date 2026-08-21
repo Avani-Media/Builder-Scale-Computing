@@ -932,41 +932,46 @@ function pdfSourcePeriodLabel(value){return pdfNarrativeText(value).replace(/\s*
 function parseAgencyAnalyticsPaidPdf(pages,fileName){
   const page=function(n){return String(pages[n-1]||'')},p1=page(1),p2=page(2),p3=page(3),p5=page(5),p6=page(6),all=pages.join('\n');
   const metric={overall:{},core:{quarter:{},meta:{},google:{},budget:{},trend:{}},named:{quarter:{},meta:{},stackadapt:{},budget:{},trend:{},awareness30d:{}},sysadmin:{},narrative:{coreNextSteps:[],namedNextSteps:[]},recognized:[]};
+  const findPdfPage=function(re){for(const raw of pages){const text=String(raw||'');const rx=new RegExp(re.source,(re.flags||'').replace('g',''));if(rx.test(text))return text}return all};
+  const overallRegion=findPdfPage(/Total Impressions/i);
+  const coreSummaryRegion=findPdfPage(/CORE - Summary Metrics/i);
+  const namedSummaryRegion=findPdfPage(/NAMED - Summary Metrics/i);
+  const namedDetailRegion=findPdfPage(/Named Account - Impressions vs CPM/i);
   const period=all.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,\s*(20\d{2})\s*-\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,\s*(20\d{2})/i);
   if(period){const months={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};metric.periodLabel=period[0];metric.dataThrough=period[6]+'-'+months[period[4].toLowerCase()]+'-'+String(period[5]).padStart(2,'0');metric.pacingLabel=period[4].slice(0,3)}
 
   // Overall quarter tiles.
-  metric.overall.impressions=pdfValueNear(p2,/^Total Impressions$/mi);metric.overall.clicks=pdfValueNear(p2,/^Total Clicks$/mi);metric.overall.leads=pdfValueNear(p2,/^Total Leads$/mi);metric.overall.avgCpl=pdfValueNear(p2,/^Average Cost Per Lead$/mi);metric.overall.spend=pdfValueNear(p2,/^Total Spend$/mi);metric.overall.avgCpm=pdfValueNear(p2,/^Avg CPM$/mi);
+  metric.overall.impressions=pdfValueNear(overallRegion,/^Total Impressions$/mi);metric.overall.clicks=pdfValueNear(overallRegion,/^Total Clicks$/mi);metric.overall.leads=pdfValueNear(overallRegion,/^Total Leads$/mi);metric.overall.avgCpl=pdfValueNear(overallRegion,/^Average Cost Per Lead$/mi);metric.overall.spend=pdfValueNear(overallRegion,/^Total Spend$/mi);metric.overall.avgCpm=pdfValueNear(overallRegion,/^Avg CPM$/mi);
   if([metric.overall.impressions,metric.overall.clicks,metric.overall.leads,metric.overall.spend].every(function(v){return v!==null&&v!==undefined}))metric.recognized.push('overall quarter KPIs');
 
   // Core quarter tiles.
-  const coreTileAt=p3.lastIndexOf('Core - Impressions'),coreTile=coreTileAt>=0?p3.slice(coreTileAt):p3;
+  const coreTileAt=coreSummaryRegion.lastIndexOf('Core - Impressions'),coreTile=coreTileAt>=0?coreSummaryRegion.slice(coreTileAt):coreSummaryRegion;
   metric.core.quarter.impressions=pdfValueNear(coreTile,/^Core - Impressions$/mi);metric.core.quarter.clicks=pdfValueNear(coreTile,/^Core - Clicks$/mi);metric.core.quarter.avgCpm=pdfValueNear(coreTile,/^Core - Avg CPM$/mi);metric.core.quarter.avgCpl=pdfValueNear(coreTile,/^Core - Avg CPL$/mi);
   const coreTotals=pdfOccurrences(coreTile,/^Core - Total Campaign[^\n]*$/gmi).map(function(x){return x.value}).filter(function(v){return v!==null});
   if(coreTotals.length){metric.core.quarter.leads=coreTotals[0];if(coreTotals.length>1)metric.core.quarter.spend=coreTotals[1]}
   if([metric.core.quarter.impressions,metric.core.quarter.clicks,metric.core.quarter.leads,metric.core.quarter.spend].every(function(v){return v!==null&&v!==undefined}))metric.recognized.push('Core quarter KPIs');
 
-  metric.core.meta.leads=pdfValueNear(p3,/^Meta Ads Leads$/mi);metric.core.meta.cpl=pdfValueNear(p3,/^Meta Ads Cost Per Lead$/mi);metric.core.meta.spend=pdfValueNear(p3,/^Meta Ads Amount Spent$/mi);
-  metric.core.google.conversions=pdfValueNear(p3,/^Google Ads Conversions$/mi);metric.core.google.cpa=pdfValueNear(p3,/^Google Ads Cost \/ Con[^\n]*$/mi);metric.core.google.spend=pdfValueNear(p3,/^Google Ads Cost$/mi);
+  metric.core.meta.leads=pdfValueNear(coreSummaryRegion,/^Meta Ads Leads$/mi);metric.core.meta.cpl=pdfValueNear(coreSummaryRegion,/^Meta Ads Cost Per Lead$/mi);metric.core.meta.spend=pdfValueNear(coreSummaryRegion,/^Meta Ads Amount Spent$/mi);
+  metric.core.google.conversions=pdfValueNear(coreSummaryRegion,/^Google Ads Conversions$/mi);metric.core.google.cpa=pdfValueNear(coreSummaryRegion,/^Google Ads Cost \/ Con[^\n]*$/mi);metric.core.google.spend=pdfValueNear(coreSummaryRegion,/^Google Ads Cost$/mi);
   if(metric.core.meta.leads!==null&&metric.core.google.conversions!==null)metric.recognized.push('Core platform KPIs');
   const coreTrendStart=/Core - Total Campaign Leads\s+[\d,]+\s+\(Last 90 Days\)/i,coreCplTrendStart=/Current CPL \(Aggregate\)\s+\$[\d,.]+\s+\(Last 90 Days\)/i;
-  metric.core.trend.leads=pdfSeries(p3,coreTrendStart);metric.core.trend.cpl=pdfSeries(p3,coreCplTrendStart);metric.core.trend.months=pdfSeriesMonths(p3,coreTrendStart);
+  metric.core.trend.leads=pdfSeries(coreSummaryRegion,coreTrendStart);metric.core.trend.cpl=pdfSeries(coreSummaryRegion,coreCplTrendStart);metric.core.trend.months=pdfSeriesMonths(coreSummaryRegion,coreTrendStart);
 
   // Named quarter tiles.
-  const namedAt=p5.indexOf('NAMED - Summary Metrics'),namedEnd=p5.indexOf('Named - Total Campaign Impressions',Math.max(0,namedAt+1)),namedTile=namedAt>=0?p5.slice(namedAt,namedEnd>namedAt?namedEnd:undefined):p5;
+  const namedAt=namedSummaryRegion.indexOf('NAMED - Summary Metrics'),namedEnd=namedSummaryRegion.indexOf('Named - Total Campaign Impressions',Math.max(0,namedAt+1)),namedTile=namedAt>=0?namedSummaryRegion.slice(namedAt,namedEnd>namedAt?namedEnd:undefined):namedSummaryRegion;
   const namedTotals=pdfOccurrences(namedTile,/^Named - Total Campaig[^\n]*$/gmi).map(function(x){return x.value}).filter(function(v){return v!==null});
   if(namedTotals.length>=3){metric.named.quarter.impressions=namedTotals[0];metric.named.quarter.clicks=namedTotals[1];metric.named.quarter.leads=namedTotals[2]}
   metric.named.quarter.reach=pdfValueNear(namedTile,/^Named - Campaign Re[^\n]*$/mi);metric.named.quarter.avgCpm=pdfValueNear(namedTile,/^Named - Avg CPM$/mi);metric.named.quarter.spend=pdfValueNear(namedTile,/^Named - Campaign Sp[^\n]*$/mi);
   if([metric.named.quarter.impressions,metric.named.quarter.clicks,metric.named.quarter.leads,metric.named.quarter.spend].every(function(v){return v!==null&&v!==undefined}))metric.recognized.push('Named quarter KPIs');
 
-  const metaEnd=namedAt>=0?namedAt:p5.length,metaRegion=p5.slice(0,metaEnd);
-  metric.named.meta.impressions=pdfValueNear(metaRegion,/^Impressions$/mi);metric.named.meta.reach=pdfValueNear(metaRegion,/^Reach$/mi);metric.named.meta.avgCpm=pdfValueNear(metaRegion,/^Average CPM$/mi);metric.named.meta.leads=pdfValueNear(metaRegion,/^Leads$/mi);metric.named.meta.cpl=pdfValueNear(p5,/^Named - Avg CPL \(Meta\)$/mi);metric.named.meta.spend=pdfValueNear(p5,/^Amount Spent$/mi);
-  metric.named.stackadapt.uniqueImpressions=pdfValueNear(p5,/^Unique Impressions$/mi);metric.named.stackadapt.videoStarted=pdfValueNear(p5,/^Video Started$/mi);metric.named.stackadapt.videoCompletionRate=pdfValueNear(p5,/^Video Completion Rate$/mi);metric.named.stackadapt.ecpm=pdfValueNear(p5,/^eCPM$/mi);metric.named.stackadapt.ctr=pdfValueNear(p5,/^CTR$/mi);metric.named.stackadapt.cost=pdfValueNear(p5,/^Cost$/mi);
+  const metaEnd=namedAt>=0?namedAt:namedSummaryRegion.length,metaRegion=namedSummaryRegion.slice(0,metaEnd);
+  metric.named.meta.impressions=pdfValueNear(metaRegion,/^Impressions$/mi);metric.named.meta.reach=pdfValueNear(metaRegion,/^Reach$/mi);metric.named.meta.avgCpm=pdfValueNear(metaRegion,/^Average CPM$/mi);metric.named.meta.leads=pdfValueNear(metaRegion,/^Leads$/mi);metric.named.meta.cpl=pdfValueNear(namedSummaryRegion,/^Named - Avg CPL \(Meta\)$/mi);metric.named.meta.spend=pdfValueNear(namedSummaryRegion,/^Amount Spent$/mi);
+  metric.named.stackadapt.uniqueImpressions=pdfValueNear(namedSummaryRegion,/^Unique Impressions$/mi);metric.named.stackadapt.videoStarted=pdfValueNear(namedSummaryRegion,/^Video Started$/mi);metric.named.stackadapt.videoCompletionRate=pdfValueNear(namedSummaryRegion,/^Video Completion Rate$/mi);metric.named.stackadapt.ecpm=pdfValueNear(namedSummaryRegion,/^eCPM$/mi);metric.named.stackadapt.ctr=pdfValueNear(namedSummaryRegion,/^CTR$/mi);metric.named.stackadapt.cost=pdfValueNear(namedSummaryRegion,/^Cost$/mi);
   if(metric.named.meta.impressions!==null&&metric.named.stackadapt.videoCompletionRate!==null)metric.recognized.push('Named platform KPIs');
   const namedImpTrendStart=/Named - Total Campaign Impressions\s+[\d.]+[ \t]*[KMB]\s+\(Last 90 Days\)/i;
-  metric.named.trend.impressions=pdfSeries(p5,namedImpTrendStart);metric.named.trend.cpm=pdfSeries(p5,/Named - Avg CPM\s+\$[\d,.]+\s+\(Last 90 Days\)/i);metric.named.trend.reach=pdfSeries(p5,/Named - Campaign Reach\s+[\d.]+[ \t]*[KMB]\s+\(Last 90 Days\)/i);metric.named.trend.spend=pdfSeries(p5,/Named - Campaign Spend\s+\$[\d,.]+\s+\(Last 90 Days\)/i);metric.named.trend.months=pdfSeriesMonths(p5,namedImpTrendStart);
-  let sm=p6.match(/Impressions\s+[\d,]+\s+\(Last 90 Days\)\s+([\d,]+)\s+([\d,]+)\s+([A-Z][a-z]{2})\s+(20\d{2})\s+([A-Z][a-z]{2})\s+(20\d{2})/i);if(sm){metric.named.stackadapt.trendImpressions=[pdfMetricNumber(sm[1]),pdfMetricNumber(sm[2])];metric.named.stackadapt.trendMonths=[sm[3]+' '+sm[4],sm[5]+' '+sm[6]]}
-  sm=p6.match(/eCPM\s+\$[\d,.]+\s+\(Last 90 Days\)\s+\$([\d,.]+)\s+\$([\d,.]+)\s+([A-Z][a-z]{2})\s+(20\d{2})\s+([A-Z][a-z]{2})\s+(20\d{2})/i);if(sm){metric.named.stackadapt.trendEcpm=[pdfMetricNumber(sm[1]),pdfMetricNumber(sm[2])];if(!metric.named.stackadapt.trendMonths)metric.named.stackadapt.trendMonths=[sm[3]+' '+sm[4],sm[5]+' '+sm[6]]}
+  metric.named.trend.impressions=pdfSeries(namedSummaryRegion,namedImpTrendStart);metric.named.trend.cpm=pdfSeries(namedSummaryRegion,/Named - Avg CPM\s+\$[\d,.]+\s+\(Last 90 Days\)/i);metric.named.trend.reach=pdfSeries(namedSummaryRegion,/Named - Campaign Reach\s+[\d.]+[ \t]*[KMB]\s+\(Last 90 Days\)/i);metric.named.trend.spend=pdfSeries(namedSummaryRegion,/Named - Campaign Spend\s+\$[\d,.]+\s+\(Last 90 Days\)/i);metric.named.trend.months=pdfSeriesMonths(namedSummaryRegion,namedImpTrendStart);
+  let sm=namedDetailRegion.match(/Impressions\s+[\d,]+\s+\(Last 90 Days\)\s+([\d,]+)\s+([\d,]+)\s+([A-Z][a-z]{2})\s+(20\d{2})\s+([A-Z][a-z]{2})\s+(20\d{2})/i);if(sm){metric.named.stackadapt.trendImpressions=[pdfMetricNumber(sm[1]),pdfMetricNumber(sm[2])];metric.named.stackadapt.trendMonths=[sm[3]+' '+sm[4],sm[5]+' '+sm[6]]}
+  sm=namedDetailRegion.match(/eCPM\s+\$[\d,.]+\s+\(Last 90 Days\)\s+\$([\d,.]+)\s+\$([\d,.]+)\s+([A-Z][a-z]{2})\s+(20\d{2})\s+([A-Z][a-z]{2})\s+(20\d{2})/i);if(sm){metric.named.stackadapt.trendEcpm=[pdfMetricNumber(sm[1]),pdfMetricNumber(sm[2])];if(!metric.named.stackadapt.trendMonths)metric.named.stackadapt.trendMonths=[sm[3]+' '+sm[4],sm[5]+' '+sm[6]]}
   if(Array.isArray(metric.named.stackadapt.trendImpressions)&&metric.named.stackadapt.trendImpressions.length===2&&Array.isArray(metric.named.stackadapt.trendEcpm)&&metric.named.stackadapt.trendEcpm.length===2)metric.recognized.push('StackAdapt recent trend');
 
   // Page-one pacing, benchmark windows, and analyst narrative.
