@@ -984,7 +984,7 @@ function parseAgencyAnalyticsPaidPdf(pages,fileName){
   const coreBlock=((leadText.match(/CORE\s*\n([\s\S]*?)\nSYSADMIN\b/i)||[])[1]||'');
   const sysBlock=((leadText.match(/SYSADMIN\s*\n([\s\S]*?)\nNAMED\s*\n/i)||[])[1]||'');
   const namedBlock=((leadText.match(/\nNAMED\s*\n([\s\S]*?)(?:\n⌬|\nSummary Metrics|$)/i)||[])[1]||'');
-  const benchmarkRx=/([A-Za-z]{3,9}\s+\d{1,2}\s*-\s*[A-Za-z]{3,9}\s+\d{1,2}):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+overall\s+)?\$([\d,.]+)\s+CPL[\s\S]{0,220}?((?:Week|Wk)\s*\d+):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+)?\$([\d,.]+)\s+CPL/i;
+  const benchmarkRx=/((?:This Month|Month to Date|MTD|[A-Za-z]{3,9}\s+\d{1,2}\s*-\s*[A-Za-z]{3,9}\s+\d{1,2})):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+overall\s+)?\$([\d,.]+)\s+CPL[\s\S]{0,220}?((?:Week|Wk)\s*\d+):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+)?\$([\d,.]+)\s+CPL/i;
   m=coreBlock.match(benchmarkRx);if(m){metric.core.window={label:pdfSourcePeriodLabel(m[1]),leads:pdfMetricNumber(m[2]),cpl:pdfMetricNumber(m[3])};metric.core.week={label:pdfNarrativeText(m[4]),leads:pdfMetricNumber(m[5]),cpl:pdfMetricNumber(m[6])}}
   m=namedBlock.match(benchmarkRx);if(m){metric.named.window={label:pdfSourcePeriodLabel(m[1]),leads:pdfMetricNumber(m[2]),cpl:pdfMetricNumber(m[3])};metric.named.week={label:pdfNarrativeText(m[4]),leads:pdfMetricNumber(m[5]),cpl:pdfMetricNumber(m[6])}}
   m=coreBlock.match(/Meta:\s*(\d+)\s*Leads?[\s\S]{0,80}?Google:\s*(\d+)\s*Leads?/i);if(m&&metric.core.week){metric.core.week.metaLeads=pdfMetricNumber(m[1]);metric.core.week.googleLeads=pdfMetricNumber(m[2])}
