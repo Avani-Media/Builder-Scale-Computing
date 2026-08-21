@@ -984,7 +984,7 @@ function parseAgencyAnalyticsPaidPdf(pages,fileName){
   const coreBlock=((leadText.match(/CORE\s*\n([\s\S]*?)\nSYSADMIN\b/i)||[])[1]||'');
   const sysBlock=((leadText.match(/SYSADMIN\s*\n([\s\S]*?)\nNAMED\s*\n/i)||[])[1]||'');
   const namedBlock=((leadText.match(/\nNAMED\s*\n([\s\S]*?)(?:\n⌬|\nSummary Metrics|$)/i)||[])[1]||'');
-  const benchmarkRx=/((?:This Month|Month to Date|MTD|[A-Za-z]{3,9}\s+\d{1,2}\s*-\s*[A-Za-z]{3,9}\s+\d{1,2})):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+overall\s+)?\$([\d,.]+)\s+CPL[\s\S]{0,220}?((?:Week|Wk)\s*\d+):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+)?\$([\d,.]+)\s+CPL/i;
+  const benchmarkRx=/([A-Za-z]{3,9}\s+\d{1,2}\s*-\s*[A-Za-z]{3,9}\s+\d{1,2}):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+overall\s+)?\$([\d,.]+)\s+CPL[\s\S]{0,220}?((?:Week|Wk)\s*\d+):\s*(\d+)\s+leads?\s+driven\s+at\s+(?:an?\s+)?\$([\d,.]+)\s+CPL/i;
   m=coreBlock.match(benchmarkRx);if(m){metric.core.window={label:pdfSourcePeriodLabel(m[1]),leads:pdfMetricNumber(m[2]),cpl:pdfMetricNumber(m[3])};metric.core.week={label:pdfNarrativeText(m[4]),leads:pdfMetricNumber(m[5]),cpl:pdfMetricNumber(m[6])}}
   m=namedBlock.match(benchmarkRx);if(m){metric.named.window={label:pdfSourcePeriodLabel(m[1]),leads:pdfMetricNumber(m[2]),cpl:pdfMetricNumber(m[3])};metric.named.week={label:pdfNarrativeText(m[4]),leads:pdfMetricNumber(m[5]),cpl:pdfMetricNumber(m[6])}}
   m=coreBlock.match(/Meta:\s*(\d+)\s*Leads?[\s\S]{0,80}?Google:\s*(\d+)\s*Leads?/i);if(m&&metric.core.week){metric.core.week.metaLeads=pdfMetricNumber(m[1]);metric.core.week.googleLeads=pdfMetricNumber(m[2])}
@@ -1005,7 +1005,6 @@ function parseAgencyAnalyticsPaidPdf(pages,fileName){
 }
 function paidAssignKnown(target,source){Object.entries(source||{}).forEach(function(entry){const k=entry[0],v=entry[1];if(v!==null&&v!==undefined&&!(typeof v==='number'&&!Number.isFinite(v)))target[k]=v})}
 function applyAgencyAnalyticsPaidPdf(metric){
-  state=normalizeScaleStateShape(state);
   const paid=state.paid;
   // PDF is a KPI + source-readout snapshot, not row-level data. Clear prior row overrides so the current PDF remains authoritative.
   paid.uploadedRows=[];paid.sourceLabel='AgencyAnalytics PDF — '+metric.fileName;paid.sourceType='AgencyAnalytics PDF';
@@ -6027,46 +6026,45 @@ function renderPreview(html,sequence){
   const seq=sequence||buildSequence||1;
   clearTimeout(previewLoadTimer);clearTimeout(previewFallbackTimer);
   releasePreviewObjectUrl();
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  previewObjectUrl=URL.createObjectURL(blob);
+  let fallbackUsed=false;
   frame.onload=function(){
-    if(seq!==buildSequence)return;
-    markPreviewReady(seq,'fresh Blob URL');
+    markPreviewReady(seq,fallbackUsed?'Blob fallback':'inline srcdoc');
   };
   frame.onerror=function(){
-    if(seq!==buildSequence)return;
-    $('previewState').textContent='Preview frame error';
-    $('buildStatus').className='notice warn';
-    $('buildStatus').innerHTML='<b>The embedded preview could not render.</b> The report itself was generated. Select <b>Open Preview</b> to use the independent window renderer.';
-  };
-  frame.removeAttribute('srcdoc');
-  frame.src='about:blank';
-  requestAnimationFrame(function(){
-    if(seq!==buildSequence)return;
-    frame.src=previewObjectUrl;
-    $('previewState').textContent='Loading preview • build '+seq;
-  });
-  previewLoadTimer=setTimeout(function(){
-    if(seq!==buildSequence)return;
-    if($('previewState').textContent.indexOf('Preview ready')!==0){
-      $('previewState').textContent='Preview generated • build '+seq;
-      $('buildStatus').className='notice good';
-      $('buildStatus').innerHTML='<b>Report generated.</b> Build '+seq+' was assigned a fresh preview document. If the embedded frame still appears stale, select <b>Open Preview</b> to verify the generated report in a separate tab.';
+    if(!fallbackUsed){
+      fallbackUsed=true;
+      loadPreviewBlobFallback(frame,html,seq,'The browser reported an inline preview error.');
+    }else{
+      $('previewState').textContent='Preview frame error';
+      $('buildStatus').className='notice warn';
+      $('buildStatus').innerHTML='<b>The embedded frame could not render.</b> The report itself was generated. Select <b>Open Preview</b> to use the independent window renderer.';
     }
-  },3500);
+  };
+  const stamped=html.replace(/<head(\s*>)/i,'<head$1<!-- AVANI preview build '+seq+' -->');
+  try{
+    frame.removeAttribute('src');
+    frame.srcdoc=stamped;
+  }catch(err){
+    fallbackUsed=true;
+    loadPreviewBlobFallback(frame,html,seq,'Inline preview assignment was blocked: '+(err&&err.message?err.message:String(err)));
+    return;
+  }
+  previewLoadTimer=setTimeout(function(){
+    if($('previewState').textContent.indexOf('Preview ready')!==0&&!fallbackUsed){
+      fallbackUsed=true;
+      loadPreviewBlobFallback(frame,html,seq,'Inline preview did not confirm a load within the watchdog window.');
+    }
+  },2200);
 }
 function build(){
-  state=normalizeScaleStateShape(state);
+  ensureStackAdaptCreativeCollection();
   const btn=$('previewBtn');
   const seq=++buildSequence;
-  let prepWarning='';
   try{
     if(btn){btn.disabled=true;btn.classList.add('is-building');btn.textContent='Building preview '+seq+'…';}
     $('previewState').textContent='Building preview '+seq+'…';
     $('buildStatus').className='notice';
     $('buildStatus').innerHTML='<b>Building preview '+seq+'…</b> Recalculating the evergreen client report.';
-    try{ensureStackAdaptCreativeCollection()}catch(prepErr){prepWarning=prepErr&&prepErr.message?prepErr.message:String(prepErr);console.warn('Preview asset-library preparation skipped:',prepErr)}
-    window.__scalePreviewPrepWarning=prepWarning;
     renderDataQa();
     lastHTML=validateGeneratedReport(buildReport());
     window.__scaleLastHtmlLength=lastHTML.length;
@@ -6123,8 +6121,6 @@ const SCALE_WORKSPACE_KEY='scale-last-live-report';
 const SCALE_WORKSPACE_FALLBACK_KEY='avaniScaleLastPublishedWorkspaceV1';
 let initialBuilderSource='';
 let scalePrivateLiveReportUrl='';
-function mergeScaleStateDefaults(base,saved){if(Array.isArray(base))return Array.isArray(saved)?JSON.parse(JSON.stringify(saved)):JSON.parse(JSON.stringify(base));if(base&&typeof base==='object'){const out=JSON.parse(JSON.stringify(base));if(saved&&typeof saved==='object'&&!Array.isArray(saved)){Object.keys(saved).forEach(function(k){const bv=out[k],sv=saved[k];if(bv&&typeof bv==='object'&&!Array.isArray(bv)&&sv&&typeof sv==='object'&&!Array.isArray(sv))out[k]=mergeScaleStateDefaults(bv,sv);else out[k]=JSON.parse(JSON.stringify(sv))})}return out}return saved===undefined?base:saved}
-function normalizeScaleStateShape(saved){return mergeScaleStateDefaults(INITIAL,saved&&typeof saved==='object'?saved:{})}
 function normalizePrivateLiveReportUrl(value){try{const u=new URL(String(value||''),location.href);return u.searchParams.get('access')?u.href:''}catch(_){return ''}}
 function setPrivateLiveReportUrl(value){const url=normalizePrivateLiveReportUrl(value);scalePrivateLiveReportUrl=url;const link=$('liveReportLink'),copy=$('copyLiveReportUrlBtn');if(link){link.href=url||'#';link.classList.toggle('disabled',!url);link.setAttribute('aria-disabled',url?'false':'true')}if(copy)copy.disabled=!url;return url}
 async function copyPrivateLiveReportUrl(){const url=scalePrivateLiveReportUrl;if(!url){setPublisherStatus('Private live-report link is unavailable. Publish the live report first or restore the last published workspace.','warn');return false}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url)}else{const ta=document.createElement('textarea');ta.value=url;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();if(!document.execCommand('copy'))throw new Error('Copy command was not available.');ta.remove()}setPublisherStatus('Private live-report link copied. Secure access is included in the URL.','good');return true}catch(err){setPublisherStatus('Could not copy the private live-report link: '+(err&&err.message?err.message:String(err)),'warn');return false}}
@@ -6137,7 +6133,7 @@ function openScaleWorkspaceDb(){return new Promise(function(resolve,reject){if(!
 async function writePublishedWorkspace(snapshot){try{const db=await openScaleWorkspaceDb();await new Promise(function(resolve,reject){const tx=db.transaction(SCALE_WORKSPACE_STORE,'readwrite');tx.objectStore(SCALE_WORKSPACE_STORE).put(snapshot,SCALE_WORKSPACE_KEY);tx.oncomplete=function(){resolve()};tx.onerror=function(){reject(tx.error||new Error('Workspace save failed'))};tx.onabort=function(){reject(tx.error||new Error('Workspace save aborted'))}});db.close();try{localStorage.removeItem(SCALE_WORKSPACE_FALLBACK_KEY)}catch(_){}return 'indexeddb'}catch(primaryError){try{localStorage.setItem(SCALE_WORKSPACE_FALLBACK_KEY,JSON.stringify(snapshot));return 'localstorage'}catch(fallbackError){throw primaryError||fallbackError}}}
 async function readPublishedWorkspace(){try{const db=await openScaleWorkspaceDb();const value=await new Promise(function(resolve,reject){const tx=db.transaction(SCALE_WORKSPACE_STORE,'readonly');const req=tx.objectStore(SCALE_WORKSPACE_STORE).get(SCALE_WORKSPACE_KEY);req.onsuccess=function(){resolve(req.result||null)};req.onerror=function(){reject(req.error||new Error('Workspace read failed'))}});db.close();if(value)return value}catch(_){}try{const raw=localStorage.getItem(SCALE_WORKSPACE_FALLBACK_KEY);return raw?JSON.parse(raw):null}catch(_){return null}}
 async function deletePublishedWorkspace(){try{const db=await openScaleWorkspaceDb();await new Promise(function(resolve,reject){const tx=db.transaction(SCALE_WORKSPACE_STORE,'readwrite');tx.objectStore(SCALE_WORKSPACE_STORE).delete(SCALE_WORKSPACE_KEY);tx.oncomplete=function(){resolve()};tx.onerror=function(){reject(tx.error||new Error('Workspace clear failed'))}});db.close()}catch(_){}try{localStorage.removeItem(SCALE_WORKSPACE_FALLBACK_KEY)}catch(_){}setWorkspaceMemoryStatus('Remembered workspace cleared. The current builder inputs are unchanged.','')}
-function applyPublishedWorkspace(snapshot){if(!snapshot||typeof snapshot!=='object')return false;if(snapshot.state&&typeof snapshot.state==='object')state=normalizeScaleStateShape(snapshot.state);else state=normalizeScaleStateShape(state);if(snapshot.fields&&typeof snapshot.fields==='object'){Object.keys(snapshot.fields).forEach(function(id){const el=$(id),saved=snapshot.fields[id];if(!el||!saved)return;if((el.type==='checkbox'||el.type==='radio')&&Object.prototype.hasOwnProperty.call(saved,'checked'))el.checked=!!saved.checked;else if(Object.prototype.hasOwnProperty.call(saved,'value'))el.value=saved.value==null?'':String(saved.value)})}if(snapshot.logo&&typeof snapshot.logo==='object'){logoDataURL=snapshot.logo.dataURL||DEFAULT_SCALE_WORDMARK;logoSource=snapshot.logo.source||'default-embedded';logoNeedsWhiteFilter=!!snapshot.logo.needsWhiteFilter;logoLikelyWordmark=snapshot.logo.likelyWordmark!==false;logoCandidates=[];logoCandidateIndex=-1;updateLogoPreview(logoDataURL,{processed:true,label:logoSource==='upload'?'Restored approved upload':'Restored published wordmark',provider:'Last published workspace',attribution:false})}syncPaidSourceLink();setPrivateLiveReportUrl(snapshot.publish&&snapshot.publish.pagesUrl?snapshot.publish.pagesUrl:'');refreshBuilder();refreshHotAccountBuilder();if(snapshot.statuses&&typeof snapshot.statuses==='object'){Object.keys(snapshot.statuses).forEach(function(id){const el=$(id),saved=snapshot.statuses[id];if(!el||!saved)return;el.textContent=saved.text||'';if(saved.className)el.className=saved.className})}lastHTML='';releasePreviewObjectUrl();const when=snapshot.savedAt?new Date(snapshot.savedAt):null;const stamp=when&&!isNaN(when.getTime())?when.toLocaleString():'the last successful publish';setWorkspaceMemoryStatus('Restored the last published Scale workspace from '+stamp+'. Imported file data is active even though browser security keeps file-picker boxes blank.','good');return true}
+function applyPublishedWorkspace(snapshot){if(!snapshot||typeof snapshot!=='object')return false;if(snapshot.state&&typeof snapshot.state==='object')state=JSON.parse(JSON.stringify(snapshot.state));if(snapshot.fields&&typeof snapshot.fields==='object'){Object.keys(snapshot.fields).forEach(function(id){const el=$(id),saved=snapshot.fields[id];if(!el||!saved)return;if((el.type==='checkbox'||el.type==='radio')&&Object.prototype.hasOwnProperty.call(saved,'checked'))el.checked=!!saved.checked;else if(Object.prototype.hasOwnProperty.call(saved,'value'))el.value=saved.value==null?'':String(saved.value)})}if(snapshot.logo&&typeof snapshot.logo==='object'){logoDataURL=snapshot.logo.dataURL||DEFAULT_SCALE_WORDMARK;logoSource=snapshot.logo.source||'default-embedded';logoNeedsWhiteFilter=!!snapshot.logo.needsWhiteFilter;logoLikelyWordmark=snapshot.logo.likelyWordmark!==false;logoCandidates=[];logoCandidateIndex=-1;updateLogoPreview(logoDataURL,{processed:true,label:logoSource==='upload'?'Restored approved upload':'Restored published wordmark',provider:'Last published workspace',attribution:false})}syncPaidSourceLink();setPrivateLiveReportUrl(snapshot.publish&&snapshot.publish.pagesUrl?snapshot.publish.pagesUrl:'');refreshBuilder();refreshHotAccountBuilder();if(snapshot.statuses&&typeof snapshot.statuses==='object'){Object.keys(snapshot.statuses).forEach(function(id){const el=$(id),saved=snapshot.statuses[id];if(!el||!saved)return;el.textContent=saved.text||'';if(saved.className)el.className=saved.className})}lastHTML='';releasePreviewObjectUrl();const when=snapshot.savedAt?new Date(snapshot.savedAt):null;const stamp=when&&!isNaN(when.getTime())?when.toLocaleString():'the last successful publish';setWorkspaceMemoryStatus('Restored the last published Scale workspace from '+stamp+'. Imported file data is active even though browser security keeps file-picker boxes blank.','good');return true}
 async function initializePublishedWorkspaceMemory(){const snapshot=await readPublishedWorkspace();if(!snapshot){setPrivateLiveReportUrl('');setWorkspaceMemoryStatus('No remembered live-report workspace on this browser yet. After a successful Publish live report, the builder will restore the published inputs and imported data the next time it opens.','');return false}return applyPublishedWorkspace(snapshot)}
 
 function getCsAssetLibraryKey(required=true){
