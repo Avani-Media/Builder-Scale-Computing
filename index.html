@@ -6026,35 +6026,33 @@ function renderPreview(html,sequence){
   const seq=sequence||buildSequence||1;
   clearTimeout(previewLoadTimer);clearTimeout(previewFallbackTimer);
   releasePreviewObjectUrl();
-  let fallbackUsed=false;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  previewObjectUrl=URL.createObjectURL(blob);
   frame.onload=function(){
-    markPreviewReady(seq,fallbackUsed?'Blob fallback':'inline srcdoc');
+    if(seq!==buildSequence)return;
+    markPreviewReady(seq,'fresh Blob URL');
   };
   frame.onerror=function(){
-    if(!fallbackUsed){
-      fallbackUsed=true;
-      loadPreviewBlobFallback(frame,html,seq,'The browser reported an inline preview error.');
-    }else{
-      $('previewState').textContent='Preview frame error';
-      $('buildStatus').className='notice warn';
-      $('buildStatus').innerHTML='<b>The embedded frame could not render.</b> The report itself was generated. Select <b>Open Preview</b> to use the independent window renderer.';
-    }
+    if(seq!==buildSequence)return;
+    $('previewState').textContent='Preview frame error';
+    $('buildStatus').className='notice warn';
+    $('buildStatus').innerHTML='<b>The embedded preview could not render.</b> The report itself was generated. Select <b>Open Preview</b> to use the independent window renderer.';
   };
-  const stamped=html.replace(/<head(\s*>)/i,'<head$1<!-- AVANI preview build '+seq+' -->');
-  try{
-    frame.removeAttribute('src');
-    frame.srcdoc=stamped;
-  }catch(err){
-    fallbackUsed=true;
-    loadPreviewBlobFallback(frame,html,seq,'Inline preview assignment was blocked: '+(err&&err.message?err.message:String(err)));
-    return;
-  }
+  frame.removeAttribute('srcdoc');
+  frame.src='about:blank';
+  requestAnimationFrame(function(){
+    if(seq!==buildSequence)return;
+    frame.src=previewObjectUrl;
+    $('previewState').textContent='Loading preview • build '+seq;
+  });
   previewLoadTimer=setTimeout(function(){
-    if($('previewState').textContent.indexOf('Preview ready')!==0&&!fallbackUsed){
-      fallbackUsed=true;
-      loadPreviewBlobFallback(frame,html,seq,'Inline preview did not confirm a load within the watchdog window.');
+    if(seq!==buildSequence)return;
+    if($('previewState').textContent.indexOf('Preview ready')!==0){
+      $('previewState').textContent='Preview generated • build '+seq;
+      $('buildStatus').className='notice good';
+      $('buildStatus').innerHTML='<b>Report generated.</b> Build '+seq+' was assigned a fresh preview document. If the embedded frame still appears stale, select <b>Open Preview</b> to verify the generated report in a separate tab.';
     }
-  },2200);
+  },3500);
 }
 function build(){
   const btn=$('previewBtn');
