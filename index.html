@@ -2986,7 +2986,7 @@ function buildReport(){
   const sourceText=function(v){return clean(String(v||'').replace(/\s+/g,' '))},sourceList=function(v){return Array.isArray(v)?v.map(sourceText).filter(Boolean):[]};
   const coreLeadGen=paid.core.leadGen||{benchmark:(paid.core.benchmarkWindow||paid.core.july||{}),latestWeek:(paid.core.latestWeek||paid.core.week31||{})},namedLeadGen=paid.named.leadGen||{benchmark:(paid.named.benchmarkWindow||paid.named.july||{}),latestWeek:(paid.named.latestWeek||paid.named.week31||{})};
   const coreWindow=coreLeadGen.benchmark||{},coreWeek=coreLeadGen.latestWeek||{},namedWindow=namedLeadGen.benchmark||{},namedWeek=namedLeadGen.latestWeek||{};
-  const paidPeriodLabel=v=>{const s=clean(v);if(/^Week\s*(?:31|32|33)$/i.test(s))return 'August 1st, 2026 – August 12th, 2026';return s};
+  const paidPeriodLabel=v=>clean(v);
   const coreWindowLabel=clean(coreWindow.label)||(pdfSourceActive?'Latest benchmark window':'Benchmark window'),coreWeekLabel=paidPeriodLabel(coreWeek.label)||(pdfSourceActive?'Latest reported week':'Latest week'),namedWindowLabel=clean(namedWindow.label)||(pdfSourceActive?'Latest benchmark window':'Benchmark window'),namedWeekLabel=paidPeriodLabel(namedWeek.label)||(pdfSourceActive?'Latest reported week':'Latest week');
   const corePacingLabel=clean(paid.core.budget&&paid.core.budget.label)||monthShortFromPeriod(paidDataPeriod)||'Current month',namedPacingLabel=clean(paid.named.budget&&paid.named.budget.label)||monthShortFromPeriod(paidDataPeriod)||'Current month';
   const execSourceReadout=sourceText(pdfNarrative.execSummary),coreSourceObservation=sourceText(pdfNarrative.coreObservation),namedSourceObservation=sourceText(pdfNarrative.namedObservation),youtubeSourceReadout=sourceText(pdfNarrative.youtube),sysadminSourceObservation=sourceText(pdfNarrative.sysadminObservation),sysadminSourceNext=sourceText(pdfNarrative.sysadminNextStep),coreSourceNext=sourceList(pdfNarrative.coreNextSteps),namedSourceNext=sourceList(pdfNarrative.namedNextSteps),namedTopVertical=sourceText(pdfNarrative.topVertical);
@@ -5982,10 +5982,7 @@ function showPreviewFlash(message){
 function releasePreviewObjectUrl(){
   if(previewObjectUrl){try{URL.revokeObjectURL(previewObjectUrl)}catch(_){ }previewObjectUrl='';}
 }
-function normalizeClientWeekLabels(html){
-  return String(html||'')
-    .replace(/Week\s*(?:31|32|33)/gi,'August 1st, 2026 – August 12th, 2026');
-}
+function normalizeClientWeekLabels(html){ return String(html||''); }
 function validateGeneratedReport(html){
   html=normalizeClientWeekLabels(html);
   if(typeof html!=='string'||html.length<10000)throw new Error('Generated report HTML is incomplete.');
